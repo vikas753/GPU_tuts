@@ -349,7 +349,7 @@ endif
 # Target rules
 all: build
 
-build: exercise01
+build: exercise01 exercise02
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)
@@ -361,16 +361,26 @@ endif
 exercise01.o:exercise01.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
+exercise02.o:exercise02.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+
+
 exercise01: exercise01.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 	$(EXEC) mkdir -p ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 	$(EXEC) cp $@ ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 
+exercise02: exercise02.o
+	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
+	$(EXEC) mkdir -p ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
+	$(EXEC) cp $@ ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
+
+
 run: build
-	$(EXEC) ./exercise01
+	$(EXEC) ./exercise01 ./exercise02
 
 clean:
-	rm -f exercise01 exercise01.o
-	rm -rf ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/exercise01
+	rm -f exercise01 exercise01.o exercise02 exercise02.o
+	rm -rf ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/exercise01 ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/exercise02
 
 clobber: clean

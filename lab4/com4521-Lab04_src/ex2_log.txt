@@ -1,0 +1,13 @@
+Total error's reported : 2048
+
+Total error's reported : 0
+
+N : 2050
+error! left : 0 , right : 447948047
+error! left : 0 , right : 727490381
+errors : 2
+
+2.2 : 
+Lesser number of threads were launched with remaining still as unattented due to less blocks , 
+fixing threads per blocks solves issue
+
