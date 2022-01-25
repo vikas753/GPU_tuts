@@ -7,6 +7,9 @@
 #define N 65536
 #define THREADS_PER_BLOCK 128
 
+__device__ int data_a[N] , data_b[N] , data_c[N];
+
+
 void checkCUDAError(const char*);
 void random_ints(int *a);
 
@@ -17,18 +20,38 @@ __global__ void vectorAdd(int *a, int *b, int *c, int max) {
 	c[i] = a[i] + b[i];
 }
 
-
+#define GIGABYTES_CONV (1024*1024)
 
 int main(void) {
 	int *a, *b, *c, *c_ref;			// host copies of a, b, c
 	int *d_a, *d_b, *d_c;			// device copies of a, b, c
 	int errors;
 	unsigned int size = N * sizeof(int);
+    cudaEvent_t start , stop;
+	cudaDeviceProp device_prop;
+    int active_device = 0 , num_devs = 0;
+	cudaGetDeviceCount(&num_devs);
+	printf(" number cuda devices : %d \n" , num_devs);
+	
+	cudaGetDevice(&active_device);
+	cudaGetDeviceProperties(&device_prop,active_device);
+	
+	long mem_bus_width = device_prop.memoryBusWidth; 
+	int mem_clock_rate = device_prop.memoryClockRate;
+	float mem_clock_rate_gbps = mem_clock_rate / GIGABYTES_CONV; 
+	float memory_bandwidth = mem_clock_rate_gbps * mem_bus_width;
+	
+	printf(" mem_bus_width : %ld , mem_clock_rate : %d , theoretical_memory_bandwidth : %f \n" , mem_bus_width,mem_clock_rate,memory_bandwidth);
+	
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
 
-	// Alloc space for device copies of a, b, c
-	cudaMalloc((void **)&d_a, size);
-	cudaMalloc((void **)&d_b, size);
-	cudaMalloc((void **)&d_c, size);
+// Get symbol addresses of static copies in CUDA
+    cudaGetSymbolAddress((void **)&d_a, data_a);
+    cudaGetSymbolAddress((void **)&d_b, data_b);
+    cudaGetSymbolAddress((void **)&d_c, data_c);
+
+
 	checkCUDAError("CUDA malloc");
 
 	// Alloc space for host copies of a, b, c and setup input values
@@ -37,24 +60,33 @@ int main(void) {
 	c = (int *)malloc(size);
 	c_ref = (int *)malloc(size);
 
+	cudaMemcpyToSymbol(data_a,a,size);
+	cudaMemcpyToSymbol(data_b,b,size);
+	
 	// Copy inputs to device
-	cudaMemcpy(d_a, a, size, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_b, b, size, cudaMemcpyHostToDevice);
-	checkCUDAError("CUDA memcpy");
+	checkCUDAError("CUDA memcpy symbol (to) ");
 
+cudaEventRecord(start);
 	// Launch add() kernel on GPU
 	vectorAdd << <N / THREADS_PER_BLOCK, THREADS_PER_BLOCK >> >(d_a, d_b, d_c, N);
+cudaEventRecord(stop);
+cudaEventSynchronize(stop);
+
 	checkCUDAError("CUDA kernel");
 
+float milliseconds = 0;
+cudaEventElapsedTime(&milliseconds,start,stop);
+
+    printf("cuda time delta for kernel : %f \n",milliseconds);
+    float computed_bw = ((N * 3 * sizeof(int) * 8 * 1000 ) / (milliseconds * 1024 * 1024 * 1024)); 
+	printf(" real_computed_bandwidth = %f \n" , computed_bw);
 
 	// Copy result back to host
-	cudaMemcpy(c, d_c, size, cudaMemcpyDeviceToHost);
-	checkCUDAError("CUDA memcpy");
+	cudaMemcpyFromSymbol(c, data_c, size);
+	checkCUDAError("CUDA memcpy symbol (from) ");
 
 	// Cleanup
 	free(a); free(b); free(c);
-	cudaFree(d_a); cudaFree(d_b); cudaFree(d_c);
-	checkCUDAError("CUDA cleanup");
 
 	return 0;
 }
