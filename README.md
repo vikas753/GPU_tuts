@@ -1,5 +1,5 @@
 # GPU_tuts
-
+( using cuda : 11.4 )
 Upgrade to Windows 11 for WSL drivers support for GPU
 1 . https://docs.nvidia.com/cuda/wsl-user-guide/index.html
 
